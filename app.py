@@ -54,8 +54,8 @@ DRIVE_FOLDER_ID = '181QVNc4pby0TuRUzBbFoIm9u0DZ22GCM'  # **Quan trọng:** Thay 
 def setup_drive_service():
     global DRIVE_SERVICE
     try:
-        creds = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        creds = service_account.Credentials.from_service_account_info(
+            creds_dict, scopes=SCOPES)
         DRIVE_SERVICE = build('drive', 'v3', credentials=creds)
     except Exception as e:
         print(f"Lỗi khi thiết lập kết nối đến Google Drive: {e}")
