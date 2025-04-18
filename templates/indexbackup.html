@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tandan AI Chat</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-container {
+      flex-grow: 1;
+      padding: 20px;
+      overflow-y: auto;
+      max-width: 800px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message {
+      display: flex;
+      margin-bottom: 16px;
+    }
+
+    .ai-message {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+
+    .user-message {
+      flex-direction: row-reverse;
+      align-items: flex-end;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      margin: 0 10px;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 16px;
+      max-width: 70%;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      position: relative;
+      white-space: pre-wrap;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .ai-message .bubble {
+      background-color: #ffffff;
+    }
+
+    .user-message .bubble {
+      background-color: #dcf8c6;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .input-container {
+      max-width: 800px;
+      margin: auto;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      border-top: 1px solid #ccc;
+      background-color: #fff;
+    }
+
+    #message-input {
+      flex-grow: 1;
+      padding: 10px 15px;
+      font-size: 16px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      outline: none;
+    }
+
+    #send-button {
+      border-radius: 50%;
+      padding: 10px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #send-button:hover {
+      background-color: #0056b3;
+    }
+
+    .loading-indicator {
+      text-align: center;
+      margin: 10px;
+      font-style: italic;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chat-container" id="chat-container">
+    <div class="message ai-message">
+      <img src="ava.png" alt="AI" class="avatar">
+      <div>
+        <div class="bubble">🤖 Xin chào! Tôi là Tandan AI. Bạn cần hỏi gì nào?</div>
+        <div class="timestamp" id="start-time"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-container">
+    <input type="text" id="message-input" placeholder="Nhập câu hỏi..." autocomplete="off" />
+    <button id="send-button" type="button">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-send" viewBox="0 0 16 16">
+        <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-3.178-1.076 2.153a.5.5 0 0 1-.883-.125l-3.56-4.065a.5.5 0 0 1 .008-.566L14.87.257a.5.5 0 0 1 .984-.111z"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="loading-indicator" class="loading-indicator" style="display: none;">Đang trả lời...</div>
+
+  <script>
+    const chatContainer = document.getElementById('chat-container');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const loadingIndicator = document.getElementById('loading-indicator');
+
+    document.getElementById("start-time").textContent = new Date().toLocaleTimeString();
+
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      addMessageToChat(text, 'user');
+      messageInput.value = '';
+      loadingIndicator.style.display = 'block';
+
+      try {
+        const response = await fetch('/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: text })
+        });
+
+        if (!response.ok) throw new Error('Network error');
+
+        const data = await response.json();
+        simulateTyping(data.answer || 'Không tìm thấy câu trả lời.');
+      } catch (err) {
+        simulateTyping('❌ Đã xảy ra lỗi khi lấy câu trả lời.');
+      } finally {
+        loadingIndicator.style.display = 'none';
+      }
+    }
+
+    function addMessageToChat(text, sender) {
+      const message = document.createElement('div');
+      message.className = `message ${sender}-message`;
+
+      const avatar = document.createElement('img');
+      avatar.className = 'avatar';
+      avatar.src = sender === 'ai' ? 'ava.png' : '';
+      avatar.alt = sender;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+
+      const time = document.createElement('div');
+      time.className = 'timestamp';
+      time.textContent = new Date().toLocaleTimeString();
+
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(bubble);
+      wrapper.appendChild(time);
+
+      if (sender === 'ai') {
+        message.appendChild(avatar);
+        message.appendChild(wrapper);
+      } else {
+        message.appendChild(wrapper);
+        message.appendChild(avatar);
+      }
+
+      chatContainer.appendChild(message);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function simulateTyping(fullText) {
+      const message = document.createElement('div');
+      message.className = 'message ai-message';
+
+      const avatar = document.createElement('img');
+      avatar.className = 'avatar';
+      avatar.src = 'ava.png';
+      avatar.alt = 'AI';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const time = document.createElement('div');
+      time.className = 'timestamp';
+      time.textContent = new Date().toLocaleTimeString();
+
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(bubble);
+      wrapper.appendChild(time);
+
+      message.appendChild(avatar);
+      message.appendChild(wrapper);
+      chatContainer.appendChild(message);
+
+      let index = 0;
+      const interval = setInterval(() => {
+        if (index < fullText.length) {
+          bubble.textContent += fullText.charAt(index);
+          index++;
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+          clearInterval(interval);
+        }
+      }, 20);
+    }
+  </script>
+
+</body>
+</html>

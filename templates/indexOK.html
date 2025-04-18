@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tandan AI Chat - Enhanced</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .chat-container {
+      max-width: 800px;
+      width: 95%; /* Added for better responsiveness on smaller viewports */
+      margin: auto;
+      flex-grow: 1;
+      overflow-y: scroll;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .message {
+      padding: 10px 15px 5px 15px; /* Adjusted padding */
+      margin-bottom: 12px; /* Increased margin slightly */
+      border-radius: 18px; /* Slightly adjusted radius */
+      clear: both;
+      max-width: 75%; /* Prevent bubbles from being too wide */
+      word-wrap: break-word; /* Ensure long words break */
+      position: relative; /* Needed for potential future absolute positioning inside */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Unified shadow */
+    }
+
+    .user-message {
+      background-color: #dcf8c6;
+      align-self: flex-end;
+      float: right; /* Keep float for clearing */
+    }
+
+    .ai-message {
+      background-color: #fff;
+      align-self: flex-start;
+      float: left; /* Keep float for clearing */
+    }
+
+    .timestamp {
+      display: block; /* Makes it appear on a new line */
+      font-size: 0.75em; /* Smaller text */
+      color: #6c757d;  /* Greyish color */
+      text-align: right; /* Aligns time to the right */
+      margin-top: 5px; /* Space above the timestamp */
+    }
+
+    .input-container {
+      max-width: 800px;
+      width: 95%; /* Added for better responsiveness */
+      margin: 0 auto; /* Center horizontally */
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      border-top: 1px solid #dee2e6;
+      background-color: #f8f9fa; /* Match body background */
+    }
+
+    #message-input {
+      flex-grow: 1;
+      margin-right: 10px;
+      border-radius: 20px;
+      padding: 10px 15px;
+      border: 1px solid #ced4da;
+    }
+
+    #send-button {
+      border-radius: 50%;
+      width: 40px; /* Fixed size */
+      height: 40px; /* Fixed size */
+      padding: 0; /* Remove padding */
+      display: flex; /* Center icon */
+      align-items: center; /* Center icon */
+      justify-content: center; /* Center icon */
+      border: none;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      flex-shrink: 0; /* Prevent button from shrinking */
+    }
+    #send-button svg {
+       width: 18px; /* Adjust icon size */
+       height: 18px; /* Adjust icon size */
+    }
+
+
+    .loading-indicator {
+      text-align: center;
+      padding: 0.5rem 0; /* Adjusted padding */
+      font-style: italic;
+      color: #6c757d;
+      background-color: #f8f9fa; /* Match body background */
+      max-width: 800px; /* Match input container width */
+      width: 95%; /* Match input container width */
+      margin: 0 auto; /* Center horizontally */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="chat-container" id="chat-container">
+    <div class="message ai-message">
+        Chào bạn, tôi là Tân Dân AI. Bạn cần trợ giúp gì?
+        <span class="timestamp"></span> </div>
+  </div>
+  <div class="input-container">
+    <input type="text" id="message-input" placeholder="Nhập câu hỏi..." autocomplete="off">
+    <button id="send-button" type="button">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send"
+        viewBox="0 0 16 16">
+        <path
+          d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-3.178-1.076 2.153a.5.5 0 0 1-.883-.125l-3.56-4.065a.5.5 0 0 1 .008-.566l14.864-8.604a.5.5 0 0 1 .54-.11zM2.978 6.895l2.82 2.82 5.195-5.195L2.978 6.895z" />
+      </svg>
+    </button>
+  </div>
+  <div id="loading-indicator" class="loading-indicator" style="display: none;">
+    Tân Dân AI đang soạn câu trả lời...
+  </div>
+
+  <script>
+    const chatContainer = document.getElementById('chat-container');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const initialAiMessageTimestamp = document.querySelector('.ai-message .timestamp'); // Get the initial timestamp span
+
+    // --- Helper Function: Add Timestamp ---
+    function addTimestamp(messageElement) {
+      const now = new Date();
+      // Format time as HH:MM (e.g., 09:05)
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      const timestampSpan = document.createElement('span');
+      timestampSpan.classList.add('timestamp');
+      timestampSpan.textContent = timeString;
+      messageElement.appendChild(timestampSpan);
+    }
+
+    // --- Helper Function: Typing Effect ---
+    function typeEffect(element, text) {
+      let i = 0;
+      const speed = 30; // Milliseconds per character (adjust for faster/slower typing)
+      element.textContent = ''; // Clear element initially
+      chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll down initially
+
+      const intervalId = setInterval(() => {
+        if (i < text.length) {
+          element.textContent += text.charAt(i);
+          i++;
+          // Keep scrolling down as text is added
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+          clearInterval(intervalId);
+          addTimestamp(element); // Add timestamp when typing is complete
+          // Final scroll adjustment just in case
+           chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      }, speed);
+    }
+
+    // --- Function to add message to chat ---
+    function addMessageToChat(text, sender) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', `${sender}-message`);
+
+      chatContainer.appendChild(messageDiv); // Append first to be part of the layout
+
+      if (sender === 'user') {
+        messageDiv.textContent = text; // Set text directly
+        addTimestamp(messageDiv); // Add timestamp immediately
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll after adding user message
+      } else { // sender === 'ai'
+        typeEffect(messageDiv, text); // Apply typing effect
+        // Timestamp and scrolling are handled within typeEffect
+      }
+    }
+
+    // --- Send Message Logic ---
+    async function sendMessage() {
+      const messageText = messageInput.value.trim();
+      if (!messageText) return;
+
+      // Add user message
+      addMessageToChat(messageText, 'user');
+      messageInput.value = ''; // Clear input
+      loadingIndicator.style.display = 'block'; // Show loading
+      // Scroll handled by addMessageToChat for user message
+
+      // Disable input and button while AI is thinking
+      messageInput.disabled = true;
+      sendButton.disabled = true;
+
+      try {
+        // --- Simulating API Call ---
+        // Replace this with your actual fetch call
+        console.log("Simulating API call for:", messageText);
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+        const fakeResponse = {
+             answer: `Đây là câu trả lời mẫu cho câu hỏi "${messageText}". Tôi đang mô phỏng hiệu ứng gõ chữ.`
+        };
+        // const data = fakeResponse;
+        // --- End Simulation ---
+
+        // --- Actual Fetch Call (uncomment when ready) ---
+         const response = await fetch('/ask', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json'
+           },
+           body: JSON.stringify({
+             question: messageText
+           })
+         });
+
+         if (!response.ok) {
+           throw new Error(`HTTP error! status: ${response.status}`);
+         }
+         const data = await response.json();
+        // --- End Actual Fetch Call ---
+
+
+        loadingIndicator.style.display = 'none'; // Hide loading *before* typing starts
+        addMessageToChat(data.answer || "Xin lỗi, tôi chưa được huấn luyện về vấn đề này.", 'ai');
+
+      } catch (error) {
+        loadingIndicator.style.display = 'none'; // Hide loading on error
+        addMessageToChat("Đã xảy ra lỗi khi kết nối tới máy chủ AI. Vui lòng thử lại sau.", 'ai');
+        console.error("Fetch error:", error);
+      } finally {
+        // Re-enable input and button
+        messageInput.disabled = false;
+        sendButton.disabled = false;
+        messageInput.focus(); // Focus back on input
+        // Final scroll is handled by the typing effect or error message addition
+      }
+    }
+
+    // --- Event Listeners ---
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', function (event) {
+      if (event.key === 'Enter' && !messageInput.disabled) { // Prevent sending while disabled
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+     // --- Initial Setup ---
+    // Add timestamp to the initial AI message when the page loads
+    if (initialAiMessageTimestamp) {
+         addTimestamp(initialAiMessageTimestamp.parentElement); // Add timestamp to the parent div
+    }
+    messageInput.focus(); // Focus on input on load
+
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

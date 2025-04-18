@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tandan AI Chat - Nâng Cao</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            width: 95%; /* Thêm để responsive tốt hơn trên các màn hình nhỏ */
+            margin: auto;
+            flex-grow: 1;
+            overflow-y: scroll;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .message {
+            padding: 10px 15px 5px 15px; /* Điều chỉnh padding */
+            margin-bottom: 12px; /* Tăng nhẹ margin */
+            border-radius: 18px; /* Điều chỉnh nhẹ độ bo tròn */
+            clear: both;
+            max-width: 75%; /* Ngăn bong bóng tin nhắn quá rộng */
+            word-wrap: break-word; /* Đảm bảo các từ dài bị ngắt dòng */
+            position: relative; /* Cần thiết cho việc định vị tuyệt đối bên trong sau này */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Bóng đổ thống nhất */
+        }
+
+        .user-message {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+            float: right; /* Giữ float để clear */
+        }
+
+        .ai-message {
+            background-color: #fff;
+            align-self: flex-start;
+            float: left; /* Giữ float để clear */
+        }
+
+        .timestamp {
+            display: block; /* Hiển thị trên một dòng mới */
+            font-size: 0.75em; /* Chữ nhỏ hơn */
+            color: #6c757d;  /* Màu xám */
+            text-align: right; /* Căn thời gian sang phải */
+            margin-top: 5px; /* Khoảng cách phía trên thời gian */
+        }
+
+        .input-container {
+            max-width: 800px;
+            width: 95%; /* Thêm để responsive tốt hơn */
+            margin: 0 auto; /* Căn giữa theo chiều ngang */
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            border-top: 1px solid #dee2e6;
+            background-color: #f8f9fa; /* Màu nền trùng với body */
+        }
+
+        #message-input {
+            flex-grow: 1;
+            margin-right: 10px;
+            border-radius: 20px;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+        }
+
+        #send-button {
+            border-radius: 50%;
+            width: 40px; /* Kích thước cố định */
+            height: 40px; /* Kích thước cố định */
+            padding: 0; /* Loại bỏ padding */
+            display: flex; /* Căn giữa biểu tượng */
+            align-items: center; /* Căn giữa biểu tượng */
+            justify-content: center; /* Căn giữa biểu tượng */
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            flex-shrink: 0; /* Ngăn nút bị co lại */
+        }
+        #send-button svg {
+            width: 18px; /* Điều chỉnh kích thước biểu tượng */
+            height: 18px; /* Điều chỉnh kích thước biểu tượng */
+        }
+
+
+        .loading-indicator {
+            text-align: center;
+            padding: 0.5rem 0; /* Điều chỉnh padding */
+            font-style: italic;
+            color: #6c757d;
+            background-color: #f8f9fa; /* Màu nền trùng với body */
+            max-width: 800px; /* Chiều rộng bằng với input container */
+            width: 95%; /* Chiều rộng bằng với input container */
+            margin: 0 auto; /* Căn giữa theo chiều ngang */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container" id="chat-container">
+        <div class="message ai-message">
+            Chào bạn, tôi là Tân Dân AI. Bạn cần trợ giúp gì?
+            <span class="timestamp"></span>
+        </div>
+    </div>
+    <div class="input-container">
+        <input type="text" id="message-input" placeholder="Nhập câu hỏi..." autocomplete="off">
+        <button id="send-button" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send"
+                viewBox="0 0 16 16">
+                <path
+                    d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-3.178-1.076 2.153a.5.5 0 0 1-.883-.125l-3.56-4.065a.5.5 0 0 1 .008-.566l14.864-8.604a.5.5 0 0 1 .54-.11zM2.978 6.895l2.82 2.82 5.195-5.195L2.978 6.895z" />
+            </svg>
+        </button>
+    </div>
+    <div id="loading-indicator" class="loading-indicator" style="display: none;">
+        Tân Dân AI đang soạn câu trả lời...
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const initialAiMessageTimestamp = document.querySelector('.ai-message .timestamp'); // Lấy thẻ span thời gian của tin nhắn AI ban đầu
+
+        // --- Hàm hỗ trợ: Thêm dấu thời gian ---
+        function addTimestamp(messageElement) {
+            const now = new Date();
+            // Định dạng thời gian theo HH:MM (ví dụ: 09:05)
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('timestamp');
+            timestampSpan.textContent = timeString;
+            messageElement.appendChild(timestampSpan);
+        }
+
+        // --- Hàm hỗ trợ: Hiệu ứng gõ chữ ---
+        function typeEffect(element, text) {
+            let i = 0;
+            const speed = 30; // Milliseconds trên mỗi ký tự (điều chỉnh để gõ nhanh/chậm hơn)
+            element.textContent = ''; // Xóa nội dung ban đầu của phần tử
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Cuộn xuống ban đầu
+
+            const intervalId = setInterval(() => {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    // Tiếp tục cuộn xuống khi thêm chữ
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                } else {
+                    clearInterval(intervalId);
+                    addTimestamp(element); // Thêm dấu thời gian khi gõ xong
+                    // Điều chỉnh cuộn cuối cùng để đảm bảo hiển thị đầy đủ
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            }, speed);
+        }
+
+        // --- Hàm thêm tin nhắn vào khung chat ---
+        function addMessageToChat(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', `${sender}-message`);
+
+            chatContainer.appendChild(messageDiv); // Thêm trước để nó thuộc về layout
+
+            if (sender === 'user') {
+                messageDiv.textContent = text; // Đặt nội dung trực tiếp
+                addTimestamp(messageDiv); // Thêm dấu thời gian ngay lập tức
+                chatContainer.scrollTop = chatContainer.scrollHeight; // Cuộn sau khi thêm tin nhắn người dùng
+            } else { // sender === 'ai'
+                typeEffect(messageDiv, text); // Áp dụng hiệu ứng gõ chữ
+                // Dấu thời gian và cuộn được xử lý bên trong typeEffect
+            }
+        }
+
+        // --- Logic gửi tin nhắn ---
+        async function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (!messageText) return;
+
+            // Thêm tin nhắn của người dùng
+            addMessageToChat(messageText, 'user');
+            messageInput.value = ''; // Xóa ô nhập
+            loadingIndicator.style.display = 'block'; // Hiển thị thông báo đang tải
+            // Cuộn được xử lý bởi addMessageToChat cho tin nhắn người dùng
+
+            // Vô hiệu hóa ô nhập và nút gửi khi AI đang suy nghĩ
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+
+            try {
+                // --- Mô phỏng gọi API ---
+                // Thay thế đoạn này bằng lệnh gọi fetch thực tế của bạn
+                console.log("Mô phỏng gọi API cho:", messageText);
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Mô phỏng độ trễ mạng
+                const fakeResponse = {
+                        answer: `Đây là câu trả lời mẫu cho câu hỏi "${messageText}". Tôi đang mô phỏng hiệu ứng gõ chữ.`
+                };
+                // const data = fakeResponse;
+                // --- Kết thúc mô phỏng ---
+
+                // --- Gọi API thực tế (bỏ chú thích khi sẵn sàng) ---
+                 const response = await fetch('/ask', {
+                 method: 'POST',
+                 headers: {
+                 'Content-Type': 'application/json'
+                 },
+                 body: JSON.stringify({
+                 question: messageText
+                 })
+                 });
+
+                 if (!response.ok) {
+                 throw new Error(`Lỗi HTTP! Trạng thái: ${response.status}`);
+                 }
+                 const data = await response.json();
+                // --- Kết thúc gọi API thực tế ---
+
+
+                loadingIndicator.style.display = 'none'; // Ẩn thông báo đang tải *trước khi* bắt đầu gõ
+                addMessageToChat(data.answer || "Xin lỗi, tôi chưa được huấn luyện về vấn đề này.", 'ai');
+
+            } catch (error) {
+                loadingIndicator.style.display = 'none'; // Ẩn thông báo đang tải khi có lỗi
+                addMessageToChat("Đã xảy ra lỗi khi kết nối tới máy chủ AI. Vui lòng thử lại sau.", 'ai');
+                console.error("Lỗi fetch:", error);
+            } finally {
+                // Kích hoạt lại ô nhập và nút gửi
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus(); // Đặt focus trở lại ô nhập
+                // Cuộn cuối cùng được xử lý bởi hiệu ứng gõ chữ hoặc việc thêm tin nhắn lỗi
+            }
+        }
+
+        // --- Lắng nghe sự kiện ---
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter' && !messageInput.disabled) { // Ngăn gửi khi đang bị vô hiệu hóa
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+         // --- Thiết lập ban đầu ---
+         // Thêm dấu thời gian vào tin nhắn AI ban đầu khi trang tải xong
+         if (initialAiMessageTimestamp) {
+             addTimestamp(initialAiMessageTimestamp.parentElement); // Thêm dấu thời gian vào thẻ div cha
+         }
+         messageInput.focus(); // Đặt focus vào ô nhập khi trang tải
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
