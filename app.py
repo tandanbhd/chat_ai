@@ -5,13 +5,15 @@ from docx import Document
 from flask_cors import CORS
 import google.generativeai as genai
 import io
+import os
+import json
 from google.oauth2 import service_account
 
 app = Flask(__name__)
 CORS(app)
 
 # Cấu hình Gemini API
-GOOGLE_API_KEY = "AIzaSyBrmODQUAJePrr4AmSRjsmYk2fhRjfaYW4"  # **Quan trọng:** Thay thế bằng API key Gemini của bạn
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 MODEL_NAME = "gemini-2.0-flash"
 generation_config = {
@@ -41,7 +43,11 @@ safety_settings = [
 # Cấu hình Google Drive API
 DRIVE_SERVICE = None
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-SERVICE_ACCOUNT_FILE = 'tandanbhd-03c609a8a6a4.json'  # **Quan trọng:** Thay thế bằng đường dẫn đến file JSON của bạn
+# Đọc biến môi trường chứa nội dung JSON
+SERVICE_ACCOUNT_JSON = os.environ.get("SERVICE_ACCOUNT_JSON")
+# Parse nội dung JSON thành dict
+creds_dict = json.loads(SERVICE_ACCOUNT_JSON)
+
 DRIVE_FOLDER_ID = '181QVNc4pby0TuRUzBbFoIm9u0DZ22GCM'  # **Quan trọng:** Thay thế bằng ID của thư mục chứa các file Word
 
 
